@@ -198,8 +198,6 @@ def get_chapter_info(bookId):
 
 def insert_to_notion(bookName, bookId, cover, sort, author, isbn, rating):
     """插入到notion"""
-    global rating
-
     time.sleep(0.3)
     parent = {
         "database_id": database_id,
