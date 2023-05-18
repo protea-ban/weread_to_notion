@@ -57,13 +57,15 @@ def get_read_info(bookId):
 
 def get_bookinfo(bookId):
     """获取书的详情"""
+    global rating
+
     params = dict(bookId=bookId)
     r = session.get(WEREAD_BOOK_INFO, params=params)
     isbn = ""
     if r.ok:
         data = r.json()
         isbn = data["isbn"]
-        rating = data["newRating"]/1000
+        rating = data["newRating"] / 1000
     return (isbn, rating)
 
 
@@ -194,8 +196,10 @@ def get_chapter_info(bookId):
     return None
 
 
-def insert_to_notion(bookName, bookId, cover, sort, author,isbn,rating):
+def insert_to_notion(bookName, bookId, cover, sort, author, isbn, rating):
     """插入到notion"""
+    global rating
+
     time.sleep(0.3)
     parent = {
         "database_id": database_id,
@@ -245,10 +249,10 @@ def insert_to_notion(bookName, bookId, cover, sort, author,isbn,rating):
 
 def add_children(id, children):
     results = []
-    for i in range(0, len(children)//100+1):
+    for i in range(0, len(children) // 100 + 1):
         time.sleep(0.3)
         response = client.blocks.children.append(
-            block_id=id, children=children[i*100:(i+1)*100])
+            block_id=id, children=children[i * 100:(i + 1) * 100])
         results.extend(response.get("results"))
     return results if len(results) == len(children) else None
 
@@ -317,19 +321,20 @@ def get_children(chapter, summary, bookmark_list):
                 children.append(callout)
                 if i.get("abstract") != None and i.get("abstract") != "":
                     quote = get_quote(i.get("abstract"))
-                    grandchild[len(children)-1] = quote
+                    grandchild[len(children) - 1] = quote
 
     else:
         # 如果没有章节信息
         for data in bookmark_list:
             children.append(get_callout(data.get("markText"),
-                            data.get("style"), data.get("colorStyle"), data.get("reviewId")))
+                                        data.get("style"), data.get("colorStyle"), data.get("reviewId")))
     if summary != None and len(summary) > 0:
         children.append(get_heading(1, "点评"))
         for i in summary:
             children.append(get_callout(i.get("review").get("content"), i.get(
                 "style"), i.get("colorStyle"), i.get("review").get("reviewId")))
     return children, grandchild
+
 
 def transform_id(book_id):
     id_length = len(book_id)
@@ -344,6 +349,7 @@ def transform_id(book_id):
     for i in range(id_length):
         result += format(ord(book_id[i]), 'x')
     return '4', [result]
+
 
 def calculate_book_str_id(book_id):
     md5 = hashlib.md5()
@@ -406,10 +412,11 @@ if __name__ == "__main__":
             bookmark_list.extend(reviews)
             bookmark_list = sorted(bookmark_list, key=lambda x: (
                 x.get("chapterUid", 1), 0 if x.get("range", "") == "" else int(x.get("range").split("-")[0])))
-            isbn,rating = get_bookinfo(bookId)
+            isbn, rating = get_bookinfo(bookId)
             children, grandchild = get_children(
                 chapter, summary, bookmark_list)
-            id = insert_to_notion(title, bookId, cover, sort, author,isbn,rating)
+            id = insert_to_notion(title, bookId, cover,
+                                  sort, author, isbn, rating)
             results = add_children(id, children)
-            if(len(grandchild)>0 and results!=None):
+            if(len(grandchild) > 0 and results != None):
                 add_grandchild(grandchild, results)
